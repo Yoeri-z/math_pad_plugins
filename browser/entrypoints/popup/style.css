@@ -29,6 +29,11 @@ button + button {
   margin-top: 8px;
 }
 
+#trust-site {
+  margin-top: 12px;
+  font-weight: 600;
+}
+
 .icon-button {
   display: grid;
   place-items: center;

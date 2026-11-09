@@ -25,6 +25,7 @@ const elements = {
   status: getElement("status", HTMLDivElement),
   site: getElement("site", HTMLDivElement),
   trustButton: getElement("trust", HTMLButtonElement),
+  trustSiteButton: getElement("trust-site", HTMLButtonElement),
   pairButton: getElement("pair", HTMLButtonElement),
   code: getElement("code", HTMLPreElement),
   qr: getElement("qr", HTMLImageElement),
@@ -55,14 +56,19 @@ async function init(): Promise<void> {
     void regeneratePairing();
   });
   elements.trustButton.addEventListener("click", () => {
-    void toggleTrust();
+    void untrustSite();
+  });
+  elements.trustSiteButton.addEventListener("click", () => {
+    void trustSite();
   });
 
   const tab = await activeTab();
   currentTabId = tab?.id;
-  currentSite = tab?.url ? siteFromUrl(tab.url) : undefined;
+  const href = await readTabUrl(tab);
+  currentSite = href ? siteFromUrl(href) : undefined;
 
   if (!currentSite) {
+    console.warn("[mathpad] could not determine the active tab URL");
     showUnsupportedPage();
     return;
   }
@@ -96,27 +102,16 @@ function setupStatusListener(): void {
 }
 
 /**
- * Adds or removes the active site. The permission request must run directly
- * from this click path so the browser treats it as a user gesture.
+ * Adds the active site. The permission request must run directly from this
+ * click path so the browser treats it as a user gesture.
  */
-async function toggleTrust(): Promise<void> {
-  if (!currentSite) {
-    return;
-  }
-  if (trusted) {
-    await untrustSite();
-    return;
-  }
-  await trustSite();
-}
-
 async function trustSite(): Promise<void> {
   const site = currentSite;
   if (!site) {
     return;
   }
 
-  elements.trustButton.disabled = true;
+  setTrustBusy(true);
   try {
     const granted = await browser.permissions.request({
       origins: [site.pattern],
@@ -135,7 +130,7 @@ async function trustSite(): Promise<void> {
   } catch (error) {
     showError(error);
   } finally {
-    elements.trustButton.disabled = false;
+    setTrustBusy(false);
   }
 }
 
@@ -145,7 +140,7 @@ async function untrustSite(): Promise<void> {
     return;
   }
 
-  elements.trustButton.disabled = true;
+  setTrustBusy(true);
   try {
     await removeTrustedSite(site.pattern);
     await syncSites();
@@ -160,7 +155,7 @@ async function untrustSite(): Promise<void> {
   } catch (error) {
     showError(error);
   } finally {
-    elements.trustButton.disabled = false;
+    setTrustBusy(false);
   }
 }
 
@@ -175,6 +170,7 @@ async function renderSite(): Promise<void> {
     ? `MathPad is on for ${currentSite.hostname}`
     : `MathPad is off for ${currentSite.hostname}`;
   setTrustButton(trusted);
+  elements.trustSiteButton.hidden = trusted;
   elements.pairButton.hidden = !trusted;
 
   if (!trusted) {
@@ -250,9 +246,39 @@ async function syncSites(): Promise<void> {
 async function activeTab() {
   const tabs = await browser.tabs.query({
     active: true,
-    lastFocusedWindow: true,
+    currentWindow: true,
   });
   return tabs[0];
+}
+
+/**
+ * Reads the active tab's URL. `tabs.query` can omit it on some pages or app
+ * windows, so fall back to reading it from the page with the temporary
+ * `activeTab` access granted by opening this popup.
+ */
+async function readTabUrl(
+  tab: { id?: number; url?: string } | undefined,
+): Promise<string | undefined> {
+  if (!tab) {
+    return undefined;
+  }
+  if (tab.url) {
+    return tab.url;
+  }
+  if (tab.id === undefined) {
+    return undefined;
+  }
+
+  try {
+    const [result] = await browser.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => location.href,
+    });
+    return typeof result?.result === "string" ? result.result : undefined;
+  } catch (error) {
+    console.warn("[mathpad] could not read the active tab URL", error);
+    return undefined;
+  }
 }
 
 function showPairing(state: PairState, status: ConnStatus): void {
@@ -291,25 +317,35 @@ function clearPairing(): void {
 }
 
 function setTrustButton(trustedNow: boolean): void {
-  const label = trustedNow ? "Stop using on this site" : "Trust this site";
-  const mark = trustedNow ? "m9 9 6 6M15 9l-6 6" : "m9 12 2 2 4-4";
+  elements.trustButton.hidden = !trustedNow;
+  if (!trustedNow) {
+    return;
+  }
 
+  const label = "Stop using on this site";
   elements.trustButton.innerHTML = `
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
       <path d="M12 3 4 6v6c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V6l-8-3Z" />
-      <path d="${mark}" />
+      <path d="m9 9 6 6M15 9l-6 6" />
     </svg>`;
   elements.trustButton.title = label;
   elements.trustButton.setAttribute("aria-label", label);
-  elements.trustButton.hidden = false;
+}
+
+function setTrustBusy(busy: boolean): void {
+  elements.trustButton.disabled = busy;
+  elements.trustSiteButton.disabled = busy;
 }
 
 function showUnsupportedPage(): void {
-  elements.site.textContent = "MathPad can't run on this page.";
+  elements.site.textContent = "MathPad can't read this page.";
   elements.trustButton.hidden = true;
+  elements.trustSiteButton.hidden = true;
   elements.pairButton.hidden = true;
   clearPairing();
-  showMessage("Open a regular website, then click MathPad to trust it.");
+  showMessage(
+    "Open a regular website and check that MathPad's site access isn't blocked, then reopen this popup.",
+  );
 }
 
 function setStatus(status: ConnStatus): void {
