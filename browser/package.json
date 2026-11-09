@@ -1,0 +1,23 @@
+{
+  "name": "mathpad-extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt --browser firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build --browser firefox",
+    "zip": "wxt build --browser firefox && wxt build && wxt zip && wxt zip --browser firefox",
+    "compile": "wxt prepare && tsc --noEmit",
+    "test": "node --experimental-strip-types --test test/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.6",
+    "typescript": "^5.9.2",
+    "wxt": "^0.20.0"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
+  }
+}

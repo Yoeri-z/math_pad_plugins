@@ -1,0 +1,67 @@
+[hidden] {
+  display: none !important;
+}
+
+body {
+  font: 13px system-ui, sans-serif;
+  width: 260px;
+  margin: 12px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.header h3 {
+  margin: 0;
+}
+
+button {
+  width: 100%;
+  padding: 8px;
+}
+
+button + button {
+  margin-top: 8px;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 2px;
+  border: 0;
+  background: transparent;
+  color: #555;
+  cursor: pointer;
+}
+
+.icon-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.icon-button:hover {
+  color: #000;
+}
+
+.icon-button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+#status {
+  margin-top: 8px;
+  color: #555;
+}
+
+#site {
+  margin-top: 8px;
+  color: #333;
+  font-weight: 600;
+}

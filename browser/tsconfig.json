@@ -1,0 +1,9 @@
+{
+  "extends": "./.wxt/tsconfig.json",
+  "include": [".wxt/wxt.d.ts", "**/*.ts", "**/*.vue"],
+  "exclude": ["test/**"],
+  "compilerOptions": {
+    "strict": true,
+    "allowImportingTsExtensions": true
+  }
+}

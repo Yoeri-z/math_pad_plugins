@@ -1,0 +1,1 @@
+Plugin for VSCode and VSCodium
